@@ -4,6 +4,7 @@ from sqlalchemy import text
 from app.routers import auth
 from app.routers import clubs
 from app.routers import announcements
+from app.routers import dependents
 
 app = FastAPI(title="Club Vision API")
 
@@ -20,3 +21,4 @@ def db_test():
 app.include_router(auth.router)
 app.include_router(clubs.router)
 app.include_router(announcements.router)
+app.include_router(dependents.router)
