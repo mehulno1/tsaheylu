@@ -1,16 +1,20 @@
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { useEffect, useState } from 'react';
 import { router } from 'expo-router';
-
 import { fetchMyClubs } from '../lib/api/clubs';
+
+type ClubMember =
+  | { type: 'self' }
+  | { type: 'dependent'; name: string; relation: string };
 
 type Club = {
   club_id: number;
   club_name: string;
-  role: string;
   status: string;
   expiry_date: string | null;
+  members: ClubMember[];
 };
+
 
 export default function HomeScreen() {
   const [clubs, setClubs] = useState<Club[]>([]);
@@ -76,6 +80,28 @@ export default function HomeScreen() {
         Manage memberships, renewals and updates
       </Text>
 
+      {/* Family Members Button */}
+      <TouchableOpacity
+        onPress={() => router.push('/family')}
+        style={{
+          marginTop: 20,
+          padding: 14,
+          borderWidth: 1,
+          borderColor: '#000',
+          borderRadius: 10,
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 16,
+            fontWeight: '600',
+            textAlign: 'center',
+          }}
+        >
+          Family Members
+        </Text>
+      </TouchableOpacity>
+
       {/* Club List */}
       <ScrollView
         style={{ marginTop: 24 }}
@@ -109,6 +135,26 @@ export default function HomeScreen() {
               {club.club_name}
             </Text>
 
+            {/* Members list */}
+            <View style={{ marginTop: 8 }}>
+              <Text style={{ fontSize: 14, color: '#444', fontWeight: '500' }}>
+                Members:
+              </Text>
+
+              {club.members.map((member, index) => (
+                <Text
+                  key={index}
+                  style={{ fontSize: 14, color: '#555', marginTop: 2 }}
+                >
+                  •{' '}
+                  {member.type === 'self'
+                    ? 'Self'
+                    : `${member.name} (${member.relation})`}
+                </Text>
+              ))}
+            </View>
+
+            {/* Membership status */}
             <Text
               style={{
                 marginTop: 6,

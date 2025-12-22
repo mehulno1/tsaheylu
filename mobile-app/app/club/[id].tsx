@@ -3,6 +3,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 
 import { getClubAnnouncements } from '../../lib/api/announcements';
+import { fetchMyClubs } from '../../lib/api/clubs';
 
 type Announcement = {
   id: number;
@@ -11,27 +12,46 @@ type Announcement = {
   created_at: string;
 };
 
+type ClubMember =
+  | { type: 'self' }
+  | { type: 'dependent'; name: string; relation: string };
+
+type Club = {
+  club_id: number;
+  club_name: string;
+  members: ClubMember[];
+};
+
 export default function ClubDetailScreen() {
   const { id } = useLocalSearchParams();
   const clubId = Number(id);
 
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [club, setClub] = useState<Club | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function loadAnnouncements() {
+    async function loadData() {
       try {
+        // Load club list to get members
+        const clubs = await fetchMyClubs();
+        const selectedClub = clubs.find(
+          (c: Club) => c.club_id === clubId
+        );
+        setClub(selectedClub || null);
+
+        // Load announcements
         const data = await getClubAnnouncements(clubId);
         setAnnouncements(data);
       } catch (err) {
-        console.error('Failed to load announcements', err);
+        console.error('Failed to load club details', err);
       } finally {
         setLoading(false);
       }
     }
 
     if (!isNaN(clubId)) {
-      loadAnnouncements();
+      loadData();
     }
   }, [clubId]);
 
@@ -53,8 +73,39 @@ export default function ClubDetailScreen() {
         Club Updates
       </Text>
 
+      {/* Members Section */}
+      {club && (
+        <View style={{ marginTop: 16 }}>
+          <Text
+            style={{
+              fontSize: 16,
+              fontWeight: '600',
+              color: '#444',
+            }}
+          >
+            Members
+          </Text>
+
+          {club.members.map((member, index) => (
+            <Text
+              key={index}
+              style={{
+                marginTop: 4,
+                fontSize: 14,
+                color: '#555',
+              }}
+            >
+              •{' '}
+              {member.type === 'self'
+                ? 'Self'
+                : `${member.name} (${member.relation})`}
+            </Text>
+          ))}
+        </View>
+      )}
+
       {/* Announcements */}
-      <View style={{ marginTop: 20 }}>
+      <View style={{ marginTop: 24 }}>
         {loading && <Text>Loading announcements...</Text>}
 
         {!loading && announcements.length === 0 && (
