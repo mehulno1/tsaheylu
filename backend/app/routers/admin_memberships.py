@@ -52,3 +52,33 @@ def approve_member(
         )
 
     return {"success": True}
+
+@router.post("/memberships/{membership_id}/reject")
+def reject_member(
+    membership_id: int,
+    payload: dict,
+    admin_user_id: int = Depends(get_admin_user),
+):
+    reason = payload.get("reason")
+
+    if not reason:
+        return {"error": "Rejection reason is required"}
+
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                """
+                UPDATE memberships
+                SET status = 'rejected',
+                    rejection_reason = :reason
+                WHERE id = :id
+                """
+            ),
+            {
+                "id": membership_id,
+                "reason": reason,
+            },
+        )
+
+    return {"success": True}
+

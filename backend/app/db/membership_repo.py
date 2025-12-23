@@ -11,6 +11,7 @@ def get_clubs_for_user(user_id: int):
                     c.id AS club_id,
                     c.name AS club_name,
                     m.status,
+                    m.rejection_reason,
                     m.expiry_date,
 
                     m.dependent_id,
@@ -38,6 +39,7 @@ def get_clubs_for_user(user_id: int):
                     "club_id": club_id,
                     "club_name": r["club_name"],
                     "status": r["status"],
+                    "rejection_reason": r["rejection_reason"],
                     "expiry_date": r["expiry_date"],
                     "members": [],
                 }
