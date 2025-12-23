@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const TOKEN_KEY = 'auth_token';
 
 const BASE_URL = __DEV__
-  ? 'http://192.168.1.242:8000'
+  ? 'http://192.168.1.118:8000'
   //? 'http://192.168.29.19:8000'
   //: 'http://192.168.1.242:8000'
   : 'https://api.clubvision.in'; // later
