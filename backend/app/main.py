@@ -7,8 +7,8 @@ from app.routers import clubs
 from app.routers import announcements
 from app.routers import dependents
 from app.routers import admin_memberships
-#from app.routers import admin_announcements
-#from app.routers import admin_dependents
+from app.routers import admin_events
+from app.routers import events
 
 
 app = FastAPI(title="Club Vision API")
@@ -36,5 +36,5 @@ app.include_router(clubs.router)
 app.include_router(announcements.router)
 app.include_router(dependents.router)
 app.include_router(admin_memberships.router)
-#app.include_router(admin_announcements.router)
-#app.include_router(admin_dependents.router)
+app.include_router(admin_events.router)
+app.include_router(events.router)
