@@ -1,3 +1,4 @@
+from typing import Optional
 from sqlalchemy import text
 from app.db.session import engine
 
@@ -58,3 +59,35 @@ def get_clubs_for_user(user_id: int):
                 )
 
         return list(clubs.values())
+
+
+# ✅ NEW — Membership validation for events
+def is_user_member_of_event_club(
+    user_id: int,
+    event_id: int,
+    dependent_id: Optional[int],
+) -> bool:
+    with engine.connect() as conn:
+        result = conn.execute(
+            text(
+                """
+                SELECT 1
+                FROM events e
+                JOIN memberships m ON m.club_id = e.club_id
+                WHERE e.id = :event_id
+                  AND m.user_id = :user_id
+                  AND (
+                    :dependent_id IS NULL
+                    OR m.dependent_id = :dependent_id
+                  )
+                LIMIT 1
+                """
+            ),
+            {
+                "event_id": event_id,
+                "user_id": user_id,
+                "dependent_id": dependent_id,
+            },
+        ).fetchone()
+
+        return result is not None

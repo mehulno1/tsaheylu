@@ -86,6 +86,29 @@ export default function HomeScreen() {
           Family Members
         </Text>
       </TouchableOpacity>
+      
+      {/* My Event Passes Button */}
+      <TouchableOpacity
+        onPress={() => router.push('/passes')}
+        style={{
+          marginTop: 12,
+          padding: 14,
+          borderWidth: 1,
+          borderColor: '#000',
+          borderRadius: 10,
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 16,
+            fontWeight: '600',
+            textAlign: 'center',
+          }}
+        >
+          My Event Passes
+        </Text>
+      </TouchableOpacity>
+
 
       {/* Club List */}
       <ScrollView style={{ marginTop: 24 }} showsVerticalScrollIndicator={false}>
