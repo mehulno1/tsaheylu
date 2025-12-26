@@ -4,47 +4,45 @@ from typing import Optional
 from app.db.session import engine
 
 
-def create_event_pass(
-    event_id: int,
-    user_id: int,
-    dependent_id: Optional[int],
-):
-    pass_code = str(uuid.uuid4())[:10]  # simple, readable for MVP
+def create_event_pass(event_id: int, user_id: int, dependent_id: Optional[int]):
+    pass_code = str(uuid.uuid4())[:10]
 
     with engine.begin() as conn:
-        try:
-            result = conn.execute(
-                text("""
-                    INSERT INTO event_passes (
-                        event_id,
-                        user_id,
-                        dependent_id,
-                        pass_code
-                    )
-                    VALUES (
-                        :event_id,
-                        :user_id,
-                        :dependent_id,
-                        :pass_code
-                    )
-                """),
-                {
-                    "event_id": event_id,
-                    "user_id": user_id,
-                    "dependent_id": dependent_id,
-                    "pass_code": pass_code,
-                },
-            )
-        except Exception as e:
-            # duplicate RSVP (already attended)
-            raise ValueError("Pass already exists for this member")
+        existing = conn.execute(
+            text("""
+                SELECT id FROM event_passes
+                WHERE event_id = :event_id
+                  AND user_id = :user_id
+                  AND (
+                    (dependent_id IS NULL AND :dependent_id IS NULL)
+                    OR dependent_id = :dependent_id
+                  )
+            """),
+            {
+                "event_id": event_id,
+                "user_id": user_id,
+                "dependent_id": dependent_id,
+            },
+        ).fetchone()
 
-    return {
-        "event_id": event_id,
-        "user_id": user_id,
-        "dependent_id": dependent_id,
-        "pass_code": pass_code,
-    }
+        if existing:
+            raise ValueError("Pass already exists")
+
+        conn.execute(
+            text("""
+                INSERT INTO event_passes (event_id, user_id, dependent_id, pass_code)
+                VALUES (:event_id, :user_id, :dependent_id, :pass_code)
+            """),
+            {
+                "event_id": event_id,
+                "user_id": user_id,
+                "dependent_id": dependent_id,
+                "pass_code": pass_code,
+            },
+        )
+
+    return {"pass_code": pass_code}
+
 
     
 def get_passes_for_user(user_id: int) -> list[dict]:
@@ -86,3 +84,21 @@ def get_passes_for_user(user_id: int) -> list[dict]:
 
         return passes
 
+def get_passes_for_user_event(event_id: int, user_id: int):
+    with engine.connect() as conn:
+        result = conn.execute(
+            text("""
+                SELECT
+                    dependent_id
+                FROM event_passes
+                WHERE event_id = :event_id
+                  AND user_id = :user_id
+            """),
+            {
+                "event_id": event_id,
+                "user_id": user_id,
+            },
+        )
+
+        # returns: [null, 2, 5]
+        return [row._mapping["dependent_id"] for row in result]

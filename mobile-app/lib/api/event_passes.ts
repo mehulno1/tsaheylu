@@ -8,3 +8,7 @@ export async function generateEventPass(
     dependent_id: dependentId,
   });
 }
+
+export async function getMyEventPasses(eventId: number) {
+  return api.get(`/events/${eventId}/passes/me`);
+}

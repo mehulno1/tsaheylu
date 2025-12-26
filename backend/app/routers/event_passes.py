@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.core.auth import get_current_user_id
 from app.db.event_pass_repo import get_passes_for_user
 from app.db.event_pass_repo import create_event_pass
+from app.db.event_pass_repo import get_passes_for_user_event
 router = APIRouter()
 
 @router.get("/me/passes")
@@ -9,6 +10,16 @@ def my_event_passes(
     user_id: int = Depends(get_current_user_id),
 ):
     return get_passes_for_user(user_id)
+
+@router.get("/events/{event_id}/passes/me")
+def my_passes_for_event(
+    event_id: int,
+    user_id: int = Depends(get_current_user_id),
+):
+    return get_passes_for_user_event(
+        event_id=event_id,
+        user_id=user_id,
+    )
 
 @router.post("/events/{event_id}/passes")
 def generate_event_pass(

@@ -1,11 +1,14 @@
-import { View, Text, ScrollView, Pressable } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 
 import { getClubAnnouncements } from '../../lib/api/announcements';
 import { fetchMyClubs } from '../../lib/api/clubs';
 import { getClubEvents } from '../../lib/api/events';
-import { generateEventPass } from '../../lib/api/event_passes';
+import {
+  generateEventPass,
+  getMyEventPasses,
+} from '../../lib/api/event_passes';
 
 type Announcement = {
   id: number;
@@ -23,17 +26,13 @@ type ClubEvent = {
 
 type ClubMember =
   | { type: 'self' }
-  | { type: 'dependent'; name: string; relation: string; id: number };
+  | { type: 'dependent'; id: number; name: string; relation: string };
 
 type Club = {
   club_id: number;
   club_name: string;
   members: ClubMember[];
 };
-
-type SelectedMember =
-  | { type: 'self' }
-  | { type: 'dependent'; id: number };
 
 export default function ClubDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -42,11 +41,14 @@ export default function ClubDetailScreen() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [events, setEvents] = useState<ClubEvent[]>([]);
   const [club, setClub] = useState<Club | null>(null);
+
   const [loading, setLoading] = useState(true);
 
   const [showAttend, setShowAttend] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<ClubEvent | null>(null);
-  const [selectedMembers, setSelectedMembers] = useState<SelectedMember[]>([]);
+
+  const [alreadyPassed, setAlreadyPassed] = useState<(number | null)[]>([]);
+  const [selectedMembers, setSelectedMembers] = useState<(number | null)[]>([]);
 
   useEffect(() => {
     async function loadData() {
@@ -69,45 +71,42 @@ export default function ClubDetailScreen() {
     if (!isNaN(clubId)) loadData();
   }, [clubId]);
 
-  function toggleMember(member: SelectedMember) {
-    setSelectedMembers((prev) => {
-      const exists =
-        member.type === 'self'
-          ? prev.some((m) => m.type === 'self')
-          : prev.some(
-              (m) => m.type === 'dependent' && m.id === member.id
-            );
+  async function openAttend(event: ClubEvent) {
+    setSelectedEvent(event);
+    setSelectedMembers([]);
 
-      if (exists) {
-        return prev.filter((m) => {
-          if (member.type === 'self') {
-            return m.type !== 'self';
-          }
-          return !(m.type === 'dependent' && m.id === member.id);
-        });
-      }
+    try {
+      const existing = await getMyEventPasses(event.id);
+      setAlreadyPassed(existing);
+    } catch (e) {
+      console.error(e);
+      setAlreadyPassed([]);
+    }
 
-      return [...prev, member];
-    });
+    setShowAttend(true);
+  }
+
+  function toggleMember(id: number | null) {
+    setSelectedMembers((prev) =>
+      prev.includes(id)
+        ? prev.filter((x) => x !== id)
+        : [...prev, id]
+    );
   }
 
   async function confirmAttend() {
     if (!selectedEvent || selectedMembers.length === 0) {
-      alert('Please select at least one member');
+      alert('Select at least one member');
       return;
     }
 
     try {
-      for (const m of selectedMembers) {
-        await generateEventPass(
-          selectedEvent.id,
-          m.type === 'self' ? null : m.id
-        );
+      for (const depId of selectedMembers) {
+        await generateEventPass(selectedEvent.id, depId);
       }
 
-      alert('Pass generated successfully');
+      alert('Passes generated successfully');
       setShowAttend(false);
-      setSelectedMembers([]);
     } catch (err) {
       console.error(err);
       alert('Failed to generate passes');
@@ -116,8 +115,8 @@ export default function ClubDetailScreen() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center' }}>
-        <Text style={{ textAlign: 'center' }}>Loading…</Text>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text>Loading…</Text>
       </View>
     );
   }
@@ -128,25 +127,9 @@ export default function ClubDetailScreen() {
         Club Updates
       </Text>
 
-      {/* MEMBERS */}
-      {club && (
-        <View style={{ marginTop: 16 }}>
-          <Text style={{ fontSize: 16, fontWeight: '600' }}>
-            Members
-          </Text>
-          {club.members.map((m, i) => (
-            <Text key={i} style={{ marginTop: 4 }}>
-              • {m.type === 'self' ? 'Self' : `${m.name} (${m.relation})`}
-            </Text>
-          ))}
-        </View>
-      )}
-
       {/* EVENTS */}
       <View style={{ marginTop: 24 }}>
-        <Text style={{ fontSize: 18, fontWeight: '600' }}>
-          Events
-        </Text>
+        <Text style={{ fontSize: 18, fontWeight: '600' }}>Events</Text>
 
         {events.map((event) => (
           <View
@@ -161,12 +144,8 @@ export default function ClubDetailScreen() {
             <Text style={{ fontWeight: '600' }}>{event.title}</Text>
             <Text>{event.description}</Text>
 
-            <Pressable
-              onPress={() => {
-                setSelectedEvent(event);
-                setShowAttend(true);
-                setSelectedMembers([]);
-              }}
+            <TouchableOpacity
+              onPress={() => openAttend(event)}
               style={{
                 marginTop: 8,
                 padding: 8,
@@ -177,7 +156,7 @@ export default function ClubDetailScreen() {
               <Text style={{ color: '#fff', textAlign: 'center' }}>
                 Attend
               </Text>
-            </Pressable>
+            </TouchableOpacity>
           </View>
         ))}
       </View>
@@ -200,7 +179,7 @@ export default function ClubDetailScreen() {
         ))}
       </View>
 
-      {/* ATTEND MODAL */}
+      {/* ATTEND SHEET */}
       {showAttend && club && (
         <View
           style={{
@@ -219,36 +198,37 @@ export default function ClubDetailScreen() {
             Attend as
           </Text>
 
-          <Pressable onPress={() => toggleMember({ type: 'self' })}>
+          {/* SELF */}
+          <TouchableOpacity
+            disabled={alreadyPassed.includes(null)}
+            onPress={() => toggleMember(null)}
+          >
             <Text style={{ marginTop: 12 }}>
-              {selectedMembers.some((m) => m.type === 'self') ? '☑' : '☐'} Self
+              {alreadyPassed.includes(null) ? '✔' : selectedMembers.includes(null) ? '☑' : '☐'} Self
             </Text>
-          </Pressable>
+          </TouchableOpacity>
 
+          {/* DEPENDENTS */}
           {club.members
             .filter((m) => m.type === 'dependent')
-            .map((m: any, i) => (
-              <Pressable
-                key={i}
-                onPress={() =>
-                  toggleMember({
-                    type: 'dependent',
-                    id: m.id,
-                  })
-                }
+            .map((m: any) => (
+              <TouchableOpacity
+                key={m.id}
+                disabled={alreadyPassed.includes(m.id)}
+                onPress={() => toggleMember(m.id)}
               >
                 <Text style={{ marginTop: 8 }}>
-                  {selectedMembers.some(
-                    (sm) => sm.type === 'dependent' && sm.id === m.id
-                  )
+                  {alreadyPassed.includes(m.id)
+                    ? '✔'
+                    : selectedMembers.includes(m.id)
                     ? '☑'
                     : '☐'}{' '}
                   {m.name} ({m.relation})
                 </Text>
-              </Pressable>
+              </TouchableOpacity>
             ))}
 
-          <Pressable
+          <TouchableOpacity
             onPress={confirmAttend}
             style={{
               marginTop: 16,
@@ -260,7 +240,7 @@ export default function ClubDetailScreen() {
             <Text style={{ color: '#fff', textAlign: 'center' }}>
               Confirm
             </Text>
-          </Pressable>
+          </TouchableOpacity>
         </View>
       )}
     </ScrollView>
