@@ -1,121 +1,172 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import {
-  fetchPendingMembers,
-  approveMember,
-  PendingMember,
-  rejectMember,
-} from '@/lib/api/adminMembers';
+import { useParams } from 'next/navigation';
 
-export default function AdminMembersPage() {
-  const [members, setMembers] = useState<PendingMember[]>([]);
+type Member = {
+  membership_id: number;
+  name: string;
+  phone: string;
+  dependent_name: string | null;
+  dependent_relation: string | null;
+};
+
+export default function MembersPage() {
+  const params = useParams();
+  const clubId = params.clubId as string;
+
+  const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
-  const [rejectingId, setRejectingId] = useState<number | null>(null);
-  const [reason, setReason] = useState('');
-  
+  const [rejectReason, setRejectReason] = useState('');
 
-  async function loadMembers() {
+  useEffect(() => {
+    loadPendingMembers();
+  }, []);
+
+  async function loadPendingMembers() {
     try {
-      const data = await fetchPendingMembers();
+      const token = localStorage.getItem('admin_token');
+      const res = await fetch(
+        `http://127.0.0.1:8000/admin/clubs/${clubId}/pending-members`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      const data = await res.json();
       setMembers(data);
     } catch (err) {
-      alert('Failed to load pending members');
+      console.error('Failed to load members', err);
     } finally {
       setLoading(false);
     }
   }
 
-  async function handleApprove(id: number) {
-    await approveMember(id);
-    await loadMembers();
+  async function approveMember(id: number) {
+    const token = localStorage.getItem('admin_token');
+    await fetch(
+      `http://127.0.0.1:8000/admin/memberships/${id}/approve`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    loadPendingMembers();
   }
 
-  async function handleReject(id: number) {
-    if (!reason.trim()) {
-      alert('Please enter a rejection reason');
+  async function rejectMember(id: number) {
+    if (!rejectReason) {
+      alert('Please enter rejection reason');
       return;
     }
-  
-    await rejectMember(id, reason);
-    setRejectingId(null);
-    setReason('');
-    await loadMembers();
-  }
-  
 
-  useEffect(() => {
-    loadMembers();
-  }, []);
+    const token = localStorage.getItem('admin_token');
+    await fetch(
+      `http://127.0.0.1:8000/admin/memberships/${id}/reject`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ reason: rejectReason }),
+      }
+    );
+
+    setRejectReason('');
+    loadPendingMembers();
+  }
+
+  if (loading) {
+    return <p>Loading members...</p>;
+  }
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
-      <h1 className="text-2xl font-semibold mb-6">
-        Pending Membership Requests
-      </h1>
+    <div>
+      <h2 style={{ fontSize: 20, fontWeight: 700 }}>
+        Pending Members
+      </h2>
 
-      {loading && <p>Loading...</p>}
-
-      {!loading && members.length === 0 && (
-        <p className="text-gray-500">
-          No pending requests.
+      {members.length === 0 && (
+        <p style={{ marginTop: 12, color: '#666' }}>
+          No pending members 🎉
         </p>
       )}
 
-{members.map((m) => (
-  <div
-    key={m.membership_id}
-    className="border p-4 rounded mb-4"
-  >
-    <p className="font-medium">
-      Phone: {m.phone}
-    </p>
-
-    {m.dependent_name && (
-      <p className="text-sm text-gray-600">
-        Dependent: {m.dependent_name} ({m.relation})
-      </p>
-    )}
-
-    {/* Action buttons */}
-    <div className="mt-3 flex gap-3">
-      <button
-        onClick={() => handleApprove(m.membership_id)}
-        className="bg-green-600 text-white px-4 py-1 rounded"
-      >
-        Approve
-      </button>
-
-      <button
-        onClick={() => setRejectingId(m.membership_id)}
-        className="bg-red-600 text-white px-4 py-1 rounded"
-      >
-        Reject
-      </button>
-    </div>
-
-    {/* Reject reason input */}
-    {rejectingId === m.membership_id && (
-      <div className="mt-3">
-        <textarea
-          placeholder="Reason for rejection"
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          className="w-full border p-2 rounded mb-2"
-          rows={2}
-        />
-
-        <button
-          onClick={() => handleReject(m.membership_id)}
-          className="bg-black text-white px-3 py-1 rounded"
+      {members.map((m) => (
+        <div
+          key={m.membership_id}
+          style={{
+            marginTop: 16,
+            padding: 16,
+            background: '#fff',
+            borderRadius: 10,
+            border: '1px solid #e5e5e5',
+          }}
         >
-          Confirm Reject
-        </button>
-      </div>
-    )}
-  </div>
-))}
+          <strong>{m.name}</strong>
+          <p style={{ marginTop: 4 }}>
+            Phone: {m.phone}
+          </p>
 
+          {m.dependent_name && (
+            <p style={{ marginTop: 4, color: '#555' }}>
+              Dependent: {m.dependent_name} ({m.dependent_relation})
+            </p>
+          )}
+
+          <div style={{ marginTop: 12, display: 'flex', gap: 10 }}>
+            <button
+              onClick={() => approveMember(m.membership_id)}
+              style={btnApprove}
+            >
+              Approve
+            </button>
+
+            <input
+              placeholder="Rejection reason"
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              style={inputStyle}
+            />
+
+            <button
+              onClick={() => rejectMember(m.membership_id)}
+              style={btnReject}
+            >
+              Reject
+            </button>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
+
+/* Styles */
+const btnApprove = {
+  background: '#16a34a',
+  color: '#fff',
+  border: 'none',
+  padding: '8px 12px',
+  borderRadius: 6,
+  cursor: 'pointer',
+};
+
+const btnReject = {
+  background: '#dc2626',
+  color: '#fff',
+  border: 'none',
+  padding: '8px 12px',
+  borderRadius: 6,
+  cursor: 'pointer',
+};
+
+const inputStyle = {
+  padding: '8px',
+  borderRadius: 6,
+  border: '1px solid #ccc',
+};

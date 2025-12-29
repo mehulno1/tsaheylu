@@ -1,5 +1,4 @@
 const API_BASE = 'http://127.0.0.1:8000';
-const CLUB_ID = 1;
 
 export type PendingMember = {
   membership_id: number;
@@ -8,11 +7,25 @@ export type PendingMember = {
   relation: string | null;
 };
 
-export async function fetchPendingMembers(): Promise<PendingMember[]> {
+export type ClubMember = {
+  membership_id: number;
+  phone: string;
+  member_type: 'self' | 'dependent';
+  name: string | null;
+  relation: string | null;
+  status: string;
+  rejection_reason: string | null;
+};
+
+/* ===========================
+   PENDING MEMBERS (existing)
+   =========================== */
+
+export async function fetchPendingMembers(clubId: number): Promise<PendingMember[]> {
   const token = localStorage.getItem('admin_token');
 
   const res = await fetch(
-    `${API_BASE}/admin/clubs/${CLUB_ID}/pending-members`,
+    `${API_BASE}/admin/clubs/${clubId}/pending-members`,
     {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -52,7 +65,7 @@ export async function rejectMember(
   const token = localStorage.getItem('admin_token');
 
   const res = await fetch(
-    `http://127.0.0.1:8000/admin/memberships/${membershipId}/reject`,
+    `${API_BASE}/admin/memberships/${membershipId}/reject`,
     {
       method: 'POST',
       headers: {
@@ -66,4 +79,30 @@ export async function rejectMember(
   if (!res.ok) {
     throw new Error('Failed to reject member');
   }
+}
+
+/* ===========================
+   ✅ ALL MEMBERS (NEW)
+   =========================== */
+
+export async function fetchAllClubMembers(
+  clubId: number
+): Promise<ClubMember[]> {
+  const token = localStorage.getItem('admin_token');
+
+  const res = await fetch(
+    `${API_BASE}/admin/clubs/${clubId}/members`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || 'Failed to fetch members');
+  }
+
+  return res.json();
 }

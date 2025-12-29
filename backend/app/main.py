@@ -10,7 +10,7 @@ from app.routers import admin_memberships
 from app.routers import admin_events
 from app.routers import events
 from app.routers import event_passes
-
+from app.routers import admin_club_members
 
 
 
@@ -42,3 +42,4 @@ app.include_router(admin_memberships.router)
 app.include_router(admin_events.router)
 app.include_router(events.router)
 app.include_router(event_passes.router)
+app.include_router(admin_club_members.router)
