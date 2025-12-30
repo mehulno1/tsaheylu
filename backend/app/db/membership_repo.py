@@ -3,6 +3,22 @@ from sqlalchemy import text
 from app.db.session import engine
 
 
+def get_all_clubs():
+    """
+    Get all clubs in the system.
+    Used for browsing clubs and requesting membership.
+    """
+    with engine.connect() as conn:
+        result = conn.execute(
+            text("""
+                SELECT id AS club_id, name AS club_name
+                FROM clubs
+                ORDER BY name
+            """)
+        )
+        return [dict(row._mapping) for row in result]
+
+
 def get_clubs_for_user(user_id: int):
     with engine.connect() as conn:
         result = conn.execute(
@@ -98,3 +114,121 @@ def is_user_member_of_event_club(
         ).fetchone()
 
         return result is not None
+
+
+def request_membership(
+    user_id: int,
+    club_id: int,
+    dependent_id: Optional[int],
+) -> dict:
+    """
+    Request membership for a user (self or dependent) to a club.
+    Creates a membership with status = 'pending'.
+    Prevents duplicate memberships for the same user + club + dependent.
+    """
+    with engine.begin() as conn:
+        # Check for existing membership (any status) for the same user + club + dependent
+        existing = conn.execute(
+            text("""
+                SELECT id FROM memberships
+                WHERE user_id = :user_id
+                  AND club_id = :club_id
+                  AND (
+                    (:dependent_id IS NULL AND dependent_id IS NULL)
+                    OR
+                    (:dependent_id IS NOT NULL AND dependent_id = :dependent_id)
+                  )
+                LIMIT 1
+            """),
+            {
+                "user_id": user_id,
+                "club_id": club_id,
+                "dependent_id": dependent_id,
+            },
+        ).fetchone()
+
+        if existing:
+            raise ValueError("Membership request already exists for this club")
+
+        # Create new membership request with status = 'pending'
+        result = conn.execute(
+            text("""
+                INSERT INTO memberships (user_id, club_id, dependent_id, status)
+                VALUES (:user_id, :club_id, :dependent_id, 'pending')
+            """),
+            {
+                "user_id": user_id,
+                "club_id": club_id,
+                "dependent_id": dependent_id,
+            },
+        )
+
+        return {"success": True, "membership_id": result.lastrowid}
+
+
+def request_memberships_batch(
+    user_id: int,
+    club_id: int,
+    dependent_ids: list[Optional[int]],
+) -> dict:
+    """
+    Request memberships for multiple members (self + dependents) in one request.
+    Creates separate membership rows for each member.
+    Skips creation if membership already exists for that member.
+    Returns list of created membership IDs and skipped members.
+    """
+    created_ids = []
+    skipped = []
+
+    with engine.begin() as conn:
+        for dependent_id in dependent_ids:
+            # Check for existing membership (any status) for the same user + club + dependent
+            existing = conn.execute(
+                text("""
+                    SELECT id, status FROM memberships
+                    WHERE user_id = :user_id
+                      AND club_id = :club_id
+                      AND (
+                        (:dependent_id IS NULL AND dependent_id IS NULL)
+                        OR
+                        (:dependent_id IS NOT NULL AND dependent_id = :dependent_id)
+                      )
+                    LIMIT 1
+                """),
+                {
+                    "user_id": user_id,
+                    "club_id": club_id,
+                    "dependent_id": dependent_id,
+                },
+            ).fetchone()
+
+            if existing:
+                # Skip if membership already exists
+                r = existing._mapping
+                skipped.append({
+                    "dependent_id": dependent_id,
+                    "membership_id": r["id"],
+                    "status": r["status"],
+                })
+                continue
+
+            # Create new membership request with status = 'pending'
+            result = conn.execute(
+                text("""
+                    INSERT INTO memberships (user_id, club_id, dependent_id, status)
+                    VALUES (:user_id, :club_id, :dependent_id, 'pending')
+                """),
+                {
+                    "user_id": user_id,
+                    "club_id": club_id,
+                    "dependent_id": dependent_id,
+                },
+            )
+
+            created_ids.append(result.lastrowid)
+
+    return {
+        "success": True,
+        "created": created_ids,
+        "skipped": skipped,
+    }

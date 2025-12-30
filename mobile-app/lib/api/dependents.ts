@@ -1,6 +1,12 @@
 import { api } from './client';
 
-export async function getDependents() {
+export type Dependent = {
+  id: number;
+  name: string;
+  relation: string;
+};
+
+export async function getDependents(): Promise<Dependent[]> {
   return api.get('/me/dependents');
 }
 

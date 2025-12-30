@@ -1,14 +1,8 @@
 import { View, Text, ScrollView, TextInput, TouchableOpacity } from 'react-native';
 import { useEffect, useState } from 'react';
 
-import { getDependents, addDependent } from '../lib/api/dependents';
+import { getDependents, addDependent, type Dependent } from '../lib/api/dependents';
 import { APIError } from '../lib/api/errors';
-
-type Dependent = {
-  id: number;
-  name: string;
-  relation: string;
-};
 
 export default function FamilyScreen() {
   const [dependents, setDependents] = useState<Dependent[]>([]);
