@@ -10,12 +10,14 @@ import {
   getRejectionReasonMessage,
   getActionDisabledMessage,
 } from '../lib/membership';
+import { getStoredPhoneNumber, maskPhoneNumber } from '../lib/utils/phone';
 
 export default function HomeScreen() {
   const { logout } = useAuth();
   const [clubs, setClubs] = useState<ClubResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string>('Member');
 
   useEffect(() => {
     async function loadClubs() {
@@ -34,7 +36,18 @@ export default function HomeScreen() {
       }
     }
 
+    async function loadDisplayName() {
+      // Try to get stored phone number for greeting
+      const phone = await getStoredPhoneNumber();
+      if (phone) {
+        setDisplayName(maskPhoneNumber(phone));
+      } else {
+        setDisplayName('Member');
+      }
+    }
+
     loadClubs();
+    loadDisplayName();
   }, []);
 
   if (loading) {
@@ -108,10 +121,6 @@ export default function HomeScreen() {
       </View>
     );
   }
-
-  // Determine display name for greeting
-  // Since user name is not available in existing data, use generic fallback
-  const displayName = 'Member';
 
   return (
     <View

@@ -1,19 +1,9 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { setLogoutCallback } from '../lib/api/client';
+import { setSharedAuthToken, setLogoutCallback } from '../lib/auth/tokenStorage';
+import { clearStoredPhoneNumber } from '../lib/utils/phone';
 
 const TOKEN_KEY = 'auth_token';
-
-// Shared token variable for client.ts to access
-let sharedAuthToken: string | null = null;
-
-export function getSharedAuthToken(): string | null {
-  return sharedAuthToken;
-}
-
-export function setSharedAuthToken(token: string | null): void {
-  sharedAuthToken = token;
-}
 
 interface AuthContextType {
   authToken: string | null;
@@ -62,6 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     try {
       await AsyncStorage.removeItem(TOKEN_KEY);
+      await clearStoredPhoneNumber();
       setAuthToken(null);
       setSharedAuthToken(null);
     } catch (error) {

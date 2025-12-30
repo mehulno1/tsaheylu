@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { verifyOtp } from '../lib/api/auth';
 import { useAuth } from '../contexts/AuthContext';
 import { APIError } from '../lib/api/errors';
+import { storePhoneNumber } from '../lib/utils/phone';
 
 export default function OtpScreen() {
   const { phone } = useLocalSearchParams<{ phone: string }>();
@@ -18,6 +19,7 @@ export default function OtpScreen() {
       setLoading(true);
       const res = await verifyOtp(phone!, otp); // 🔥 REAL BACKEND CALL
       await setToken(res.token);                 // 🔐 STORE TOKEN
+      await storePhoneNumber(phone!);             // 📱 STORE PHONE FOR GREETING
       router.replace('/home');                   // 🏠 GO TO HOME
     } catch (error) {
       console.error('Failed to verify OTP:', error);

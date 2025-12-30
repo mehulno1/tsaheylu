@@ -1,16 +1,9 @@
-import { getSharedAuthToken } from '../../contexts/AuthContext';
+import { getSharedAuthToken, getLogoutCallback } from '../auth/tokenStorage';
 import { APIError } from './errors';
 
 const BASE_URL = __DEV__
   ? 'http://192.168.1.242:8000'
   : 'https://api.clubvision.in';
-
-// Logout callback - set by AuthContext
-let logoutCallback: (() => Promise<void>) | null = null;
-
-export function setLogoutCallback(callback: (() => Promise<void>) | null) {
-  logoutCallback = callback;
-}
   
 // Legacy functions kept for backward compatibility but deprecated
 // Token management is now handled by AuthContext
@@ -80,9 +73,10 @@ async function request(
     // Handle authentication errors
     if (statusCode === 401 || statusCode === 403) {
       // Trigger logout if callback is set
-      if (logoutCallback) {
+      const callback = getLogoutCallback();
+      if (callback) {
         try {
-          await logoutCallback();
+          await callback();
         } catch (logoutError) {
           console.error('Failed to logout on auth error:', logoutError);
         }
