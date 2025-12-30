@@ -97,20 +97,24 @@ export default function MembersPage() {
     try {
       setProcessing(true);
       setActionError(null);
+      
+      // Wait for successful backend response before updating UI
       await approveMember(actionState.membershipId);
       
-      // Update UI immediately to reflect backend state
+      // Only update UI after successful backend response
       setMembers((prev) =>
         prev.filter((m) => m.membership_id !== actionState.membershipId)
       );
       
       closeActionDialog();
       
-      // Reload to ensure UI matches backend
+      // Reload to ensure UI matches backend state
       await loadPendingMembers();
     } catch (err) {
       console.error('Failed to approve member:', err);
+      // On API failure, show error and do not update UI state
       setActionError('Failed to approve member. Please try again.');
+      // UI state remains unchanged - member still in list
     } finally {
       setProcessing(false);
     }
@@ -127,20 +131,24 @@ export default function MembersPage() {
     try {
       setProcessing(true);
       setActionError(null);
+      
+      // Wait for successful backend response before updating UI
       await rejectMember(actionState.membershipId, rejectionReason.trim());
       
-      // Update UI immediately to reflect backend state
+      // Only update UI after successful backend response
       setMembers((prev) =>
         prev.filter((m) => m.membership_id !== actionState.membershipId)
       );
       
       closeActionDialog();
       
-      // Reload to ensure UI matches backend
+      // Reload to ensure UI matches backend state
       await loadPendingMembers();
     } catch (err) {
       console.error('Failed to reject member:', err);
+      // On API failure, show error and do not update UI state
       setActionError('Failed to reject member. Please try again.');
+      // UI state remains unchanged - member still in list
     } finally {
       setProcessing(false);
     }
