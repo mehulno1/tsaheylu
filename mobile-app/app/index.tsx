@@ -1,17 +1,15 @@
 import { View, Text, TouchableOpacity } from 'react-native';
-import { useEffect } from 'react';
 import { router } from 'expo-router';
-import { getAuthToken } from '../lib/api/client';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function IndexScreen() {
-  useEffect(() => {
-    const token = getAuthToken();
+  const { isAuthenticated, isLoading } = useAuth();
 
-    if (token) {
-      // User already logged in → go to Home
-      router.replace('/home');
-    }
-  }, []);
+  // Don't show login screen if still loading or if authenticated
+  // (routing is handled by _layout.tsx)
+  if (isLoading || isAuthenticated) {
+    return null;
+  }
 
   return (
     <View
@@ -67,3 +65,4 @@ export default function IndexScreen() {
     </View>
   );
 }
+

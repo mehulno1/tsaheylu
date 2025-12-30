@@ -2,10 +2,11 @@ import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import { useState } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
 import { verifyOtp } from '../lib/api/auth';
-import { setAuthToken } from '../lib/api/client';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function OtpScreen() {
   const { phone } = useLocalSearchParams<{ phone: string }>();
+  const { setToken } = useAuth();
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -15,8 +16,8 @@ export default function OtpScreen() {
     try {
       setLoading(true);
       const res = await verifyOtp(phone!, otp); // 🔥 REAL BACKEND CALL
-      setAuthToken(res.token);                  // 🔐 STORE TOKEN
-      router.replace('/');                      // 🏠 GO TO HOME
+      await setToken(res.token);                 // 🔐 STORE TOKEN
+      router.replace('/home');                   // 🏠 GO TO HOME
     } catch (error) {
       console.error(error);
       alert('Invalid or expired OTP');

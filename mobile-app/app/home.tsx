@@ -2,6 +2,7 @@ import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { useEffect, useState } from 'react';
 import { router } from 'expo-router';
 import { fetchMyClubs } from '../lib/api/clubs';
+import { useAuth } from '../contexts/AuthContext';
 
 type ClubMember =
   | { type: 'self' }
@@ -19,6 +20,7 @@ type Club = {
 };
 
 export default function HomeScreen() {
+  const { logout } = useAuth();
   const [clubs, setClubs] = useState<Club[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -109,6 +111,37 @@ export default function HomeScreen() {
         </Text>
       </TouchableOpacity>
 
+      {/* Logout Button */}
+      <TouchableOpacity
+        onPress={async () => {
+          try {
+            await logout();
+            // Routing will automatically redirect to login via _layout.tsx
+          } catch (error) {
+            console.error('Logout failed:', error);
+            alert('Failed to logout');
+          }
+        }}
+        style={{
+          marginTop: 12,
+          padding: 14,
+          borderWidth: 1,
+          borderColor: '#666',
+          borderRadius: 10,
+          backgroundColor: '#f5f5f5',
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 16,
+            fontWeight: '600',
+            textAlign: 'center',
+            color: '#666',
+          }}
+        >
+          Logout
+        </Text>
+      </TouchableOpacity>
 
       {/* Club List */}
       <ScrollView style={{ marginTop: 24 }} showsVerticalScrollIndicator={false}>
