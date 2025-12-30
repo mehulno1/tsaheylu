@@ -1,5 +1,5 @@
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, router } from 'expo-router';
 import { useEffect, useState } from 'react';
 
 import { getClubAnnouncements } from '../../lib/api/announcements';
@@ -10,6 +10,13 @@ import {
   getMyEventPasses,
 } from '../../lib/api/event_passes';
 import { APIError } from '../../lib/api/errors';
+import {
+  type MembershipStatus,
+  getMembershipStatusConfig,
+  membershipAllowsActions,
+  getRejectionReasonMessage,
+  getActionDisabledMessage,
+} from '../../lib/membership';
 
 type Announcement = {
   id: number;
@@ -32,6 +39,9 @@ type ClubMember =
 type Club = {
   club_id: number;
   club_name: string;
+  status: MembershipStatus;
+  rejection_reason?: string | null;
+  expiry_date: string | null;
   members: ClubMember[];
 };
 
@@ -58,12 +68,26 @@ export default function ClubDetailScreen() {
       setError(null);
       const clubs = await fetchMyClubs();
       const selectedClub = clubs.find(
-        (c: Club) => c.club_id === clubId
-      );
-      setClub(selectedClub || null);
+        (c: any) => c.club_id === clubId
+      ) as Club | undefined;
+      
+      if (!selectedClub) {
+        setError('Club not found');
+        setLoading(false);
+        return;
+      }
 
-      setAnnouncements(await getClubAnnouncements(clubId));
-      setEvents(await getClubEvents(clubId));
+      setClub(selectedClub);
+
+      // Only load club data if membership allows actions
+      if (membershipAllowsActions(selectedClub.status)) {
+        setAnnouncements(await getClubAnnouncements(clubId));
+        setEvents(await getClubEvents(clubId));
+      } else {
+        // Set empty arrays if membership doesn't allow actions
+        setAnnouncements([]);
+        setEvents([]);
+      }
     } catch (err) {
       console.error('Failed to load club details', err);
       const errorMessage =
@@ -79,6 +103,15 @@ export default function ClubDetailScreen() {
   }, [clubId]);
 
   async function openAttend(event: ClubEvent) {
+    if (!club) return;
+
+    // Check membership status before allowing action
+    if (!membershipAllowsActions(club.status)) {
+      const message = getActionDisabledMessage(club.status);
+      alert(message);
+      return;
+    }
+
     setSelectedEvent(event);
     setSelectedMembers([]);
 
@@ -105,6 +138,15 @@ export default function ClubDetailScreen() {
   async function confirmAttend() {
     if (!selectedEvent || selectedMembers.length === 0) {
       alert('Select at least one member');
+      return;
+    }
+
+    if (!club) return;
+
+    // Check membership status before allowing action
+    if (!membershipAllowsActions(club.status)) {
+      const message = getActionDisabledMessage(club.status);
+      alert(message);
       return;
     }
 
@@ -177,15 +219,130 @@ export default function ClubDetailScreen() {
     );
   }
 
+  if (!club) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text>Club not found</Text>
+      </View>
+    );
+  }
+
+  const statusConfig = getMembershipStatusConfig(club.status);
+  const allowsActions = membershipAllowsActions(club.status);
+  const rejectionMessage = getRejectionReasonMessage(
+    club.status,
+    club.rejection_reason
+  );
+  const actionDisabledMessage = getActionDisabledMessage(club.status);
+
   return (
     <ScrollView style={{ flex: 1, padding: 20, backgroundColor: '#fff' }}>
       <Text style={{ fontSize: 26, fontWeight: '700' }}>
-        Club Updates
+        {club.club_name}
       </Text>
+
+      {/* Membership Status Banner */}
+      <View
+        style={{
+          marginTop: 16,
+          padding: 12,
+          backgroundColor: allowsActions ? '#f0fdf4' : '#fef2f2',
+          borderRadius: 8,
+          borderLeftWidth: 4,
+          borderLeftColor: statusConfig.color,
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 14,
+            fontWeight: '600',
+            color: statusConfig.color,
+          }}
+        >
+          {statusConfig.label}
+        </Text>
+        <Text
+          style={{
+            marginTop: 4,
+            fontSize: 13,
+            color: '#666',
+          }}
+        >
+          {statusConfig.explanation}
+        </Text>
+
+        {/* Rejection reason - always shown when status is rejected */}
+        {rejectionMessage && (
+          <View style={{ marginTop: 8 }}>
+            <Text
+              style={{
+                fontSize: 13,
+                fontWeight: '500',
+                color: '#991b1b',
+              }}
+            >
+              Rejection Reason:
+            </Text>
+            <Text
+              style={{
+                marginTop: 4,
+                fontSize: 13,
+                color: '#7f1d1d',
+              }}
+            >
+              {rejectionMessage}
+            </Text>
+          </View>
+        )}
+
+        {/* Action disabled message */}
+        {!allowsActions && (
+          <View style={{ marginTop: 8 }}>
+            <Text
+              style={{
+                fontSize: 13,
+                color: '#92400e',
+                fontStyle: 'italic',
+              }}
+            >
+              {actionDisabledMessage}
+            </Text>
+          </View>
+        )}
+      </View>
 
       {/* EVENTS */}
       <View style={{ marginTop: 24 }}>
         <Text style={{ fontSize: 18, fontWeight: '600' }}>Events</Text>
+
+        {!allowsActions && (
+          <View
+            style={{
+              marginTop: 12,
+              padding: 12,
+              backgroundColor: '#fffbeb',
+              borderRadius: 8,
+              borderLeftWidth: 3,
+              borderLeftColor: statusConfig.color,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 13,
+                color: '#92400e',
+                fontStyle: 'italic',
+              }}
+            >
+              {actionDisabledMessage}
+            </Text>
+          </View>
+        )}
+
+        {allowsActions && events.length === 0 && (
+          <Text style={{ marginTop: 12, color: '#666', fontSize: 14 }}>
+            No events scheduled at this time.
+          </Text>
+        )}
 
         {events.map((event) => (
           <View
@@ -195,6 +352,7 @@ export default function ClubDetailScreen() {
               padding: 12,
               borderWidth: 1,
               borderRadius: 8,
+              opacity: allowsActions ? 1 : 0.6,
             }}
           >
             <Text style={{ fontWeight: '600' }}>{event.title}</Text>
@@ -202,10 +360,11 @@ export default function ClubDetailScreen() {
 
             <TouchableOpacity
               onPress={() => openAttend(event)}
+              disabled={!allowsActions}
               style={{
                 marginTop: 8,
                 padding: 8,
-                backgroundColor: '#000',
+                backgroundColor: allowsActions ? '#000' : '#9ca3af',
                 borderRadius: 6,
               }}
             >
@@ -219,14 +378,46 @@ export default function ClubDetailScreen() {
 
       {/* ANNOUNCEMENTS */}
       <View style={{ marginTop: 24 }}>
+        <Text style={{ fontSize: 18, fontWeight: '600' }}>Announcements</Text>
+
+        {!allowsActions && (
+          <View
+            style={{
+              marginTop: 12,
+              padding: 12,
+              backgroundColor: '#fffbeb',
+              borderRadius: 8,
+              borderLeftWidth: 3,
+              borderLeftColor: statusConfig.color,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 13,
+                color: '#92400e',
+                fontStyle: 'italic',
+              }}
+            >
+              {actionDisabledMessage}
+            </Text>
+          </View>
+        )}
+
+        {allowsActions && announcements.length === 0 && (
+          <Text style={{ marginTop: 12, color: '#666', fontSize: 14 }}>
+            No announcements at this time.
+          </Text>
+        )}
+
         {announcements.map((a) => (
           <View
             key={a.id}
             style={{
-              marginBottom: 12,
+              marginTop: 12,
               padding: 12,
               borderWidth: 1,
               borderRadius: 8,
+              opacity: allowsActions ? 1 : 0.6,
             }}
           >
             <Text style={{ fontWeight: '600' }}>{a.title}</Text>
@@ -254,13 +445,48 @@ export default function ClubDetailScreen() {
             Attend as
           </Text>
 
+          {!allowsActions && (
+            <View
+              style={{
+                marginTop: 12,
+                padding: 12,
+                backgroundColor: '#fffbeb',
+                borderRadius: 8,
+                borderLeftWidth: 3,
+                borderLeftColor: statusConfig.color,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 13,
+                  color: '#92400e',
+                  fontStyle: 'italic',
+                }}
+              >
+                {actionDisabledMessage}
+              </Text>
+            </View>
+          )}
+
           {/* SELF */}
           <TouchableOpacity
-            disabled={alreadyPassed.includes(null)}
-            onPress={() => toggleMember(null)}
+            disabled={alreadyPassed.includes(null) || !allowsActions}
+            onPress={() => {
+              if (!allowsActions) {
+                alert(actionDisabledMessage);
+                return;
+              }
+              toggleMember(null);
+            }}
           >
-            <Text style={{ marginTop: 12 }}>
+            <Text
+              style={{
+                marginTop: 12,
+                color: !allowsActions ? '#9ca3af' : '#000',
+              }}
+            >
               {alreadyPassed.includes(null) ? '✔' : selectedMembers.includes(null) ? '☑' : '☐'} Self
+              {alreadyPassed.includes(null) && ' (Pass already generated)'}
             </Text>
           </TouchableOpacity>
 
@@ -270,26 +496,39 @@ export default function ClubDetailScreen() {
             .map((m: any) => (
               <TouchableOpacity
                 key={m.id}
-                disabled={alreadyPassed.includes(m.id)}
-                onPress={() => toggleMember(m.id)}
+                disabled={alreadyPassed.includes(m.id) || !allowsActions}
+                onPress={() => {
+                  if (!allowsActions) {
+                    alert(actionDisabledMessage);
+                    return;
+                  }
+                  toggleMember(m.id);
+                }}
               >
-                <Text style={{ marginTop: 8 }}>
+                <Text
+                  style={{
+                    marginTop: 8,
+                    color: !allowsActions ? '#9ca3af' : '#000',
+                  }}
+                >
                   {alreadyPassed.includes(m.id)
                     ? '✔'
                     : selectedMembers.includes(m.id)
                     ? '☑'
                     : '☐'}{' '}
                   {m.name} ({m.relation})
+                  {alreadyPassed.includes(m.id) && ' (Pass already generated)'}
                 </Text>
               </TouchableOpacity>
             ))}
 
           <TouchableOpacity
             onPress={confirmAttend}
+            disabled={!allowsActions}
             style={{
               marginTop: 16,
               padding: 12,
-              backgroundColor: '#000',
+              backgroundColor: allowsActions ? '#000' : '#9ca3af',
               borderRadius: 8,
             }}
           >

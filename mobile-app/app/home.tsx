@@ -4,17 +4,22 @@ import { router } from 'expo-router';
 import { fetchMyClubs } from '../lib/api/clubs';
 import { useAuth } from '../contexts/AuthContext';
 import { APIError } from '../lib/api/errors';
+import {
+  type MembershipStatus,
+  getMembershipStatusConfig,
+  membershipAllowsActions,
+  getRejectionReasonMessage,
+  getActionDisabledMessage,
+} from '../lib/membership';
 
 type ClubMember =
   | { type: 'self' }
   | { type: 'dependent'; name: string; relation: string };
 
-type ClubStatus = 'active' | 'pending' | 'rejected' | 'expired';
-
 type Club = {
   club_id: number;
   club_name: string;
-  status: ClubStatus;
+  status: MembershipStatus;
   rejection_reason?: string | null;
   expiry_date: string | null;
   members: ClubMember[];
@@ -215,32 +220,35 @@ export default function HomeScreen() {
         )}
 
         {clubs.map((club) => {
-          const isActive = club.status === 'active';
-
-          const statusColor =
-            club.status === 'active'
-              ? 'green'
-              : club.status === 'pending'
-              ? '#d97706'
-              : 'red';
+          const statusConfig = getMembershipStatusConfig(club.status);
+          const allowsActions = membershipAllowsActions(club.status);
+          const rejectionMessage = getRejectionReasonMessage(
+            club.status,
+            club.rejection_reason
+          );
+          const actionDisabledMessage = getActionDisabledMessage(club.status);
 
           return (
             <TouchableOpacity
               key={club.club_id}
               onPress={() => {
-                if (isActive) {
+                if (allowsActions) {
                   router.push(`/club/${club.club_id}`);
+                } else {
+                  // Show explicit message when action is disabled
+                  alert(actionDisabledMessage);
                 }
               }}
-              disabled={!isActive}
-              activeOpacity={isActive ? 0.8 : 1}
+              disabled={!allowsActions}
+              activeOpacity={allowsActions ? 0.8 : 1}
               style={{
                 padding: 16,
                 borderWidth: 1,
-                borderColor: '#e0e0e0',
+                borderColor: allowsActions ? '#e0e0e0' : '#d1d5db',
                 borderRadius: 10,
                 marginBottom: 16,
-                opacity: isActive ? 1 : 0.6,
+                opacity: allowsActions ? 1 : 0.7,
+                backgroundColor: allowsActions ? '#ffffff' : '#f9fafb',
               }}
             >
               <Text style={{ fontSize: 18, fontWeight: '600' }}>
@@ -267,32 +275,85 @@ export default function HomeScreen() {
               </View>
 
               {/* Membership status */}
-              <Text
-                style={{
-                  marginTop: 6,
-                  fontSize: 14,
-                  color: statusColor,
-                  fontWeight: '500',
-                }}
-              >
-                {club.status === 'active' && 'Membership Active'}
-                {club.status === 'pending' && 'Pending Approval'}
-                {club.status === 'rejected' && 'Membership Rejected'}
-                {club.status === 'expired' && 'Membership Expired'}
-              </Text>
+              <View style={{ marginTop: 8 }}>
+                <Text
+                  style={{
+                    fontSize: 14,
+                    color: statusConfig.color,
+                    fontWeight: '600',
+                  }}
+                >
+                  {statusConfig.label}
+                </Text>
 
-              {/* Rejection reason */}
-              {club.status === 'rejected' && club.rejection_reason && (
+                {/* Status explanation */}
                 <Text
                   style={{
                     marginTop: 4,
                     fontSize: 13,
-                    color: '#444',
+                    color: '#666',
                   }}
                 >
-                  Reason: {club.rejection_reason}
+                  {statusConfig.explanation}
                 </Text>
-              )}
+
+                {/* Rejection reason - always shown when status is rejected */}
+                {rejectionMessage && (
+                  <View
+                    style={{
+                      marginTop: 8,
+                      padding: 10,
+                      backgroundColor: '#fef2f2',
+                      borderRadius: 6,
+                      borderLeftWidth: 3,
+                      borderLeftColor: statusConfig.color,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 13,
+                        color: '#991b1b',
+                        fontWeight: '500',
+                      }}
+                    >
+                      Rejection Reason:
+                    </Text>
+                    <Text
+                      style={{
+                        marginTop: 4,
+                        fontSize: 13,
+                        color: '#7f1d1d',
+                      }}
+                    >
+                      {rejectionMessage}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Action disabled message - shown when actions are not allowed */}
+                {!allowsActions && (
+                  <View
+                    style={{
+                      marginTop: 8,
+                      padding: 10,
+                      backgroundColor: '#fffbeb',
+                      borderRadius: 6,
+                      borderLeftWidth: 3,
+                      borderLeftColor: statusConfig.color,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 13,
+                        color: '#92400e',
+                        fontStyle: 'italic',
+                      }}
+                    >
+                      {actionDisabledMessage}
+                    </Text>
+                  </View>
+                )}
+              </View>
             </TouchableOpacity>
           );
         })}
