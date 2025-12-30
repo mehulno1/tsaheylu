@@ -70,9 +70,11 @@ async function request(
   if (!response.ok) {
     const statusCode = response.status;
     
-    // Handle authentication errors
-    if (statusCode === 401 || statusCode === 403) {
-      // Trigger logout if callback is set
+    // Handle authentication errors (401 only)
+    // 401 = Unauthorized: Invalid or missing token, user needs to re-authenticate
+    // 403 = Forbidden: Valid token but insufficient permissions, keep user logged in
+    if (statusCode === 401) {
+      // Trigger logout only on authentication failure
       const callback = getLogoutCallback();
       if (callback) {
         try {

@@ -8,14 +8,18 @@ def create_event_pass(event_id: int, user_id: int, dependent_id: Optional[int]):
     pass_code = str(uuid.uuid4())[:10]
 
     with engine.begin() as conn:
-        # Use COALESCE with a sentinel value to handle NULL comparisons correctly
-        # This ensures NULL = NULL matches (for self passes) and non-NULL = non-NULL matches (for dependent passes)
+        # Check for duplicate pass: event_id, user_id, and dependent_id must all match
+        # Handle NULL correctly: NULL = NULL only for self passes, non-NULL = non-NULL for dependent passes
         existing = conn.execute(
             text("""
                 SELECT id FROM event_passes
                 WHERE event_id = :event_id
                   AND user_id = :user_id
-                  AND COALESCE(dependent_id, -1) = COALESCE(:dependent_id, -1)
+                  AND (
+                    (:dependent_id IS NULL AND dependent_id IS NULL)
+                    OR
+                    (:dependent_id IS NOT NULL AND dependent_id = :dependent_id)
+                  )
             """),
             {
                 "event_id": event_id,

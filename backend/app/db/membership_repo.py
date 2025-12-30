@@ -61,12 +61,17 @@ def get_clubs_for_user(user_id: int):
         return list(clubs.values())
 
 
-# ✅ NEW — Membership validation for events
+# Membership validation for events - requires active status
 def is_user_member_of_event_club(
     user_id: int,
     event_id: int,
     dependent_id: Optional[int],
 ) -> bool:
+    """
+    Check if user has active membership for the event's club.
+    Returns True only if membership status is 'active'.
+    Handles both self (dependent_id IS NULL) and dependent memberships.
+    """
     with engine.connect() as conn:
         result = conn.execute(
             text(
@@ -76,9 +81,11 @@ def is_user_member_of_event_club(
                 JOIN memberships m ON m.club_id = e.club_id
                 WHERE e.id = :event_id
                   AND m.user_id = :user_id
+                  AND m.status = 'active'
                   AND (
-                    :dependent_id IS NULL
-                    OR m.dependent_id = :dependent_id
+                    (:dependent_id IS NULL AND m.dependent_id IS NULL)
+                    OR
+                    (:dependent_id IS NOT NULL AND m.dependent_id = :dependent_id)
                   )
                 LIMIT 1
                 """

@@ -3,6 +3,7 @@ from app.core.auth import get_current_user_id
 from app.db.event_pass_repo import get_passes_for_user
 from app.db.event_pass_repo import create_event_pass
 from app.db.event_pass_repo import get_passes_for_user_event
+from app.db.membership_repo import is_user_member_of_event_club
 router = APIRouter()
 
 @router.get("/me/passes")
@@ -28,6 +29,18 @@ def generate_event_pass(
     user_id: int = Depends(get_current_user_id),
 ):
     dependent_id = payload.get("dependent_id")
+    
+    # Validate active membership before creating pass
+    if not is_user_member_of_event_club(
+        user_id=user_id,
+        event_id=event_id,
+        dependent_id=dependent_id,
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Membership not approved. Only active members can generate event passes.",
+        )
+    
     try:
         return create_event_pass(event_id, user_id, dependent_id)
     except ValueError as e:

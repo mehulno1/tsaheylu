@@ -9,12 +9,19 @@ export class APIError extends Error {
   }
 
   get isAuthError(): boolean {
-    return this.statusCode === 401 || this.statusCode === 403;
+    // Only 401 is an authentication error (invalid/missing token)
+    // 403 is an authorization error (valid token but insufficient permissions)
+    return this.statusCode === 401;
   }
 
   get userMessage(): string {
-    if (this.isAuthError) {
+    // 401 = Authentication failure: session expired, need to re-login
+    if (this.statusCode === 401) {
       return 'Your session has expired. Please log in again.';
+    }
+    // 403 = Authorization failure: show the actual error message from server
+    if (this.statusCode === 403) {
+      return this.message || 'You do not have permission to perform this action.';
     }
     if (this.statusCode === 404) {
       return 'The requested resource was not found.';
