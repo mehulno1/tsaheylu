@@ -9,6 +9,7 @@ import {
   generateEventPass,
   getMyEventPasses,
 } from '../../lib/api/event_passes';
+import { APIError } from '../../lib/api/errors';
 
 type Announcement = {
   id: number;
@@ -43,6 +44,7 @@ export default function ClubDetailScreen() {
   const [club, setClub] = useState<Club | null>(null);
 
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [showAttend, setShowAttend] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<ClubEvent | null>(null);
@@ -50,24 +52,29 @@ export default function ClubDetailScreen() {
   const [alreadyPassed, setAlreadyPassed] = useState<(number | null)[]>([]);
   const [selectedMembers, setSelectedMembers] = useState<(number | null)[]>([]);
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const clubs = await fetchMyClubs();
-        const selectedClub = clubs.find(
-          (c: Club) => c.club_id === clubId
-        );
-        setClub(selectedClub || null);
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const clubs = await fetchMyClubs();
+      const selectedClub = clubs.find(
+        (c: Club) => c.club_id === clubId
+      );
+      setClub(selectedClub || null);
 
-        setAnnouncements(await getClubAnnouncements(clubId));
-        setEvents(await getClubEvents(clubId));
-      } catch (err) {
-        console.error('Failed to load club details', err);
-      } finally {
-        setLoading(false);
-      }
+      setAnnouncements(await getClubAnnouncements(clubId));
+      setEvents(await getClubEvents(clubId));
+    } catch (err) {
+      console.error('Failed to load club details', err);
+      const errorMessage =
+        err instanceof APIError ? err.userMessage : 'Failed to load club details. Please try again.';
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
     }
+  };
 
+  useEffect(() => {
     if (!isNaN(clubId)) loadData();
   }, [clubId]);
 
@@ -79,7 +86,8 @@ export default function ClubDetailScreen() {
       const existing = await getMyEventPasses(event.id);
       setAlreadyPassed(existing);
     } catch (e) {
-      console.error(e);
+      console.error('Failed to load existing passes:', e);
+      // Don't block the UI if this fails, just show empty list
       setAlreadyPassed([]);
     }
 
@@ -107,9 +115,13 @@ export default function ClubDetailScreen() {
 
       alert('Passes generated successfully');
       setShowAttend(false);
+      // Refresh data to show new passes
+      loadData();
     } catch (err) {
-      console.error(err);
-      alert('Failed to generate passes');
+      console.error('Failed to generate passes:', err);
+      const errorMessage =
+        err instanceof APIError ? err.userMessage : 'Failed to generate passes. Please try again.';
+      alert(errorMessage);
     }
   }
 
@@ -117,6 +129,50 @@ export default function ClubDetailScreen() {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <Text>Loading…</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: '#fff',
+          padding: 20,
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 16,
+            color: '#d32f2f',
+            marginBottom: 16,
+            textAlign: 'center',
+          }}
+        >
+          {error}
+        </Text>
+        <TouchableOpacity
+          onPress={loadData}
+          style={{
+            backgroundColor: '#000',
+            paddingVertical: 12,
+            paddingHorizontal: 24,
+            borderRadius: 8,
+          }}
+        >
+          <Text
+            style={{
+              color: '#ffffff',
+              fontSize: 16,
+              fontWeight: '600',
+            }}
+          >
+            Retry
+          </Text>
+        </TouchableOpacity>
       </View>
     );
   }

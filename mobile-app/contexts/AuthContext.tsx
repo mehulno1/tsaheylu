@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { setLogoutCallback } from '../lib/api/client';
 
 const TOKEN_KEY = 'auth_token';
 
@@ -68,6 +69,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw error;
     }
   };
+
+  // Register logout callback with API client for auth error handling
+  useEffect(() => {
+    setLogoutCallback(logout);
+    return () => {
+      setLogoutCallback(null);
+    };
+  }, []);
 
   const isAuthenticated = authToken !== null;
 

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { router } from 'expo-router';
 import { fetchMyClubs } from '../lib/api/clubs';
 import { useAuth } from '../contexts/AuthContext';
+import { APIError } from '../lib/api/errors';
 
 type ClubMember =
   | { type: 'self' }
@@ -23,15 +24,20 @@ export default function HomeScreen() {
   const { logout } = useAuth();
   const [clubs, setClubs] = useState<Club[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadClubs() {
       try {
+        setLoading(true);
+        setError(null);
         const data = await fetchMyClubs();
         setClubs(data);
-      } catch (error) {
-        console.error(error);
-        alert('Failed to load clubs');
+      } catch (err) {
+        console.error('Failed to load clubs:', err);
+        const errorMessage =
+          err instanceof APIError ? err.userMessage : 'Failed to load clubs. Please try again.';
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }
@@ -51,6 +57,63 @@ export default function HomeScreen() {
         }}
       >
         <Text>Loading your clubs...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: '#ffffff',
+          padding: 20,
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 16,
+            color: '#d32f2f',
+            marginBottom: 16,
+            textAlign: 'center',
+          }}
+        >
+          {error}
+        </Text>
+        <TouchableOpacity
+          onPress={async () => {
+            try {
+              setError(null);
+              setLoading(true);
+              const data = await fetchMyClubs();
+              setClubs(data);
+            } catch (err) {
+              const errorMessage =
+                err instanceof APIError ? err.userMessage : 'Failed to load clubs. Please try again.';
+              setError(errorMessage);
+            } finally {
+              setLoading(false);
+            }
+          }}
+          style={{
+            backgroundColor: '#000',
+            paddingVertical: 12,
+            paddingHorizontal: 24,
+            borderRadius: 8,
+          }}
+        >
+          <Text
+            style={{
+              color: '#ffffff',
+              fontSize: 16,
+              fontWeight: '600',
+            }}
+          >
+            Retry
+          </Text>
+        </TouchableOpacity>
       </View>
     );
   }

@@ -2,6 +2,7 @@ import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import { useState } from 'react';
 import { router } from 'expo-router';
 import { requestOtp } from '../lib/api/auth';
+import { APIError } from '../lib/api/errors';
 
 export default function PhoneScreen() {
   const [phone, setPhone] = useState('');
@@ -15,8 +16,10 @@ export default function PhoneScreen() {
       await requestOtp(phone); // 🔥 REAL BACKEND CALL
       router.push({ pathname: '/otp', params: { phone } });
     } catch (error) {
-      console.error(error);
-      alert('Failed to send OTP');
+      console.error('Failed to send OTP:', error);
+      const errorMessage =
+        error instanceof APIError ? error.userMessage : 'Failed to send OTP. Please try again.';
+      alert(errorMessage);
     } finally {
       setLoading(false);
     }

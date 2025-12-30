@@ -1,6 +1,7 @@
-import { View, Text, ScrollView } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { useEffect, useState } from 'react';
 import { getMyPasses } from '../lib/api/passes';
+import { APIError } from '../lib/api/errors';
 
 type Pass = {
   id: number;
@@ -13,21 +14,26 @@ type Pass = {
 export default function MyPassesScreen() {
   const [passes, setPasses] = useState<Pass[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadPasses = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await getMyPasses();
+      setPasses(data);
+    } catch (e) {
+      console.error('Failed to load passes:', e);
+      const errorMessage =
+        e instanceof APIError ? e.userMessage : 'Failed to load passes. Please try again.';
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function load() {
-      try {
-        const data = await getMyPasses();
-        setPasses(data);
-      } catch (e) {
-        console.error(e);
-        alert('Failed to load passes');
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    load();
+    loadPasses();
   }, []);
 
   if (loading) {
@@ -41,6 +47,50 @@ export default function MyPassesScreen() {
         }}
       >
         <Text>Loading passes...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: '#fff',
+          padding: 20,
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 16,
+            color: '#d32f2f',
+            marginBottom: 16,
+            textAlign: 'center',
+          }}
+        >
+          {error}
+        </Text>
+        <TouchableOpacity
+          onPress={loadPasses}
+          style={{
+            backgroundColor: '#000',
+            paddingVertical: 12,
+            paddingHorizontal: 24,
+            borderRadius: 8,
+          }}
+        >
+          <Text
+            style={{
+              color: '#ffffff',
+              fontSize: 16,
+              fontWeight: '600',
+            }}
+          >
+            Retry
+          </Text>
+        </TouchableOpacity>
       </View>
     );
   }

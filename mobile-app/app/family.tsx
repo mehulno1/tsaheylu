@@ -2,6 +2,7 @@ import { View, Text, ScrollView, TextInput, TouchableOpacity } from 'react-nativ
 import { useEffect, useState } from 'react';
 
 import { getDependents, addDependent } from '../lib/api/dependents';
+import { APIError } from '../lib/api/errors';
 
 type Dependent = {
   id: number;
@@ -14,28 +15,108 @@ export default function FamilyScreen() {
   const [name, setName] = useState('');
   const [relation, setRelation] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
 
-  async function loadDependents() {
+  const loadDependents = async () => {
     try {
+      setLoading(true);
+      setError(null);
       const data = await getDependents();
       setDependents(data);
+    } catch (err) {
+      console.error('Failed to load dependents:', err);
+      const errorMessage =
+        err instanceof APIError ? err.userMessage : 'Failed to load family members. Please try again.';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   async function handleAdd() {
     if (!name || !relation) return;
 
-    await addDependent({ name, relation });
-    setName('');
-    setRelation('');
-    loadDependents();
+    try {
+      setAdding(true);
+      setAddError(null);
+      await addDependent({ name, relation });
+      setName('');
+      setRelation('');
+      await loadDependents();
+    } catch (err) {
+      console.error('Failed to add dependent:', err);
+      const errorMessage =
+        err instanceof APIError ? err.userMessage : 'Failed to add family member. Please try again.';
+      setAddError(errorMessage);
+    } finally {
+      setAdding(false);
+    }
   }
 
   useEffect(() => {
     loadDependents();
   }, []);
+
+  if (loading && dependents.length === 0) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: '#fff',
+        }}
+      >
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
+
+  if (error && dependents.length === 0) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: '#fff',
+          padding: 20,
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 16,
+            color: '#d32f2f',
+            marginBottom: 16,
+            textAlign: 'center',
+          }}
+        >
+          {error}
+        </Text>
+        <TouchableOpacity
+          onPress={loadDependents}
+          style={{
+            backgroundColor: '#000',
+            paddingVertical: 12,
+            paddingHorizontal: 24,
+            borderRadius: 8,
+          }}
+        >
+          <Text
+            style={{
+              color: '#ffffff',
+              fontSize: 16,
+              fontWeight: '600',
+            }}
+          >
+            Retry
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={{ flex: 1, padding: 20, backgroundColor: '#fff' }}>
@@ -49,10 +130,25 @@ export default function FamilyScreen() {
           Add Family Member
         </Text>
 
+        {addError && (
+          <Text
+            style={{
+              color: '#d32f2f',
+              fontSize: 14,
+              marginTop: 8,
+            }}
+          >
+            {addError}
+          </Text>
+        )}
+
         <TextInput
           placeholder="Name"
           value={name}
-          onChangeText={setName}
+          onChangeText={(text) => {
+            setName(text);
+            setAddError(null);
+          }}
           style={{
             borderWidth: 1,
             borderColor: '#ccc',
@@ -65,7 +161,10 @@ export default function FamilyScreen() {
         <TextInput
           placeholder="Relation (son, daughter, father)"
           value={relation}
-          onChangeText={setRelation}
+          onChangeText={(text) => {
+            setRelation(text);
+            setAddError(null);
+          }}
           style={{
             borderWidth: 1,
             borderColor: '#ccc',
@@ -77,15 +176,16 @@ export default function FamilyScreen() {
 
         <TouchableOpacity
           onPress={handleAdd}
+          disabled={adding || !name || !relation}
           style={{
             marginTop: 12,
-            backgroundColor: '#000',
+            backgroundColor: adding || !name || !relation ? '#ccc' : '#000',
             paddingVertical: 14,
             borderRadius: 8,
           }}
         >
           <Text style={{ color: '#fff', textAlign: 'center', fontWeight: '600' }}>
-            Add
+            {adding ? 'Adding...' : 'Add'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -96,9 +196,29 @@ export default function FamilyScreen() {
           Your Family
         </Text>
 
-        {loading && <Text>Loading...</Text>}
+        {loading && <Text style={{ marginTop: 10 }}>Loading...</Text>}
 
-        {!loading && dependents.length === 0 && (
+        {error && dependents.length > 0 && (
+          <View style={{ marginTop: 10 }}>
+            <Text style={{ color: '#d32f2f', marginBottom: 8 }}>{error}</Text>
+            <TouchableOpacity
+              onPress={loadDependents}
+              style={{
+                backgroundColor: '#000',
+                paddingVertical: 8,
+                paddingHorizontal: 16,
+                borderRadius: 8,
+                alignSelf: 'flex-start',
+              }}
+            >
+              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>
+                Retry
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {!loading && dependents.length === 0 && !error && (
           <Text style={{ color: '#666', marginTop: 10 }}>
             No family members added yet.
           </Text>

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
 import { verifyOtp } from '../lib/api/auth';
 import { useAuth } from '../contexts/AuthContext';
+import { APIError } from '../lib/api/errors';
 
 export default function OtpScreen() {
   const { phone } = useLocalSearchParams<{ phone: string }>();
@@ -19,8 +20,10 @@ export default function OtpScreen() {
       await setToken(res.token);                 // 🔐 STORE TOKEN
       router.replace('/home');                   // 🏠 GO TO HOME
     } catch (error) {
-      console.error(error);
-      alert('Invalid or expired OTP');
+      console.error('Failed to verify OTP:', error);
+      const errorMessage =
+        error instanceof APIError ? error.userMessage : 'Invalid or expired OTP. Please try again.';
+      alert(errorMessage);
     } finally {
       setLoading(false);
     }
