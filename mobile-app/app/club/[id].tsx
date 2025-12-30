@@ -28,7 +28,7 @@ type Announcement = {
 type ClubEvent = {
   id: number;
   title: string;
-  description: string;
+  description: string | null;
   event_date: string;
 };
 
@@ -495,7 +495,7 @@ export default function ClubDetailScreen() {
             .filter((m) => m.type === 'dependent')
             .map((m: any) => (
               <TouchableOpacity
-                key={m.id}
+                key={`${m.type}-${m.id}`}
                 disabled={alreadyPassed.includes(m.id) || !allowsActions}
                 onPress={() => {
                   if (!allowsActions) {
