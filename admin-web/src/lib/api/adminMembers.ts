@@ -17,9 +17,7 @@ export type ClubMember = {
   rejection_reason: string | null;
 };
 
-/* ===========================
-   PENDING MEMBERS (existing)
-   =========================== */
+// PENDING MEMBERS
 
 export async function fetchPendingMembers(clubId: number): Promise<PendingMember[]> {
   const token = localStorage.getItem('admin_token');
@@ -81,9 +79,7 @@ export async function rejectMember(
   }
 }
 
-/* ===========================
-   ✅ ALL MEMBERS (NEW)
-   =========================== */
+// ALL MEMBERS
 
 export async function fetchAllClubMembers(
   clubId: number

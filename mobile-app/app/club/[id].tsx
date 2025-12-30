@@ -1,17 +1,17 @@
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 
 import { getClubAnnouncements } from '../../lib/api/announcements';
-import { fetchMyClubs } from '../../lib/api/clubs';
+import { fetchMyClubs, type ClubResponse } from '../../lib/api/clubs';
 import { getClubEvents } from '../../lib/api/events';
 import {
   generateEventPass,
   getMyEventPasses,
 } from '../../lib/api/event_passes';
+import { getDependents } from '../../lib/api/dependents';
 import { APIError } from '../../lib/api/errors';
 import {
-  type MembershipStatus,
   getMembershipStatusConfig,
   membershipAllowsActions,
   getRejectionReasonMessage,
@@ -32,16 +32,17 @@ type ClubEvent = {
   event_date: string;
 };
 
+type Dependent = {
+  id: number;
+  name: string;
+  relation: string;
+};
+
 type ClubMember =
   | { type: 'self' }
   | { type: 'dependent'; id: number; name: string; relation: string };
 
-type Club = {
-  club_id: number;
-  club_name: string;
-  status: MembershipStatus;
-  rejection_reason?: string | null;
-  expiry_date: string | null;
+type Club = ClubResponse & {
   members: ClubMember[];
 };
 
@@ -61,15 +62,22 @@ export default function ClubDetailScreen() {
 
   const [alreadyPassed, setAlreadyPassed] = useState<(number | null)[]>([]);
   const [selectedMembers, setSelectedMembers] = useState<(number | null)[]>([]);
+  const [dependents, setDependents] = useState<Dependent[]>([]);
 
   const loadData = async () => {
     try {
       setLoading(true);
       setError(null);
-      const clubs = await fetchMyClubs();
+      const [clubs, deps] = await Promise.all([
+        fetchMyClubs(),
+        getDependents().catch(() => [] as Dependent[]),
+      ]);
+      
+      setDependents(deps);
+      
       const selectedClub = clubs.find(
-        (c: any) => c.club_id === clubId
-      ) as Club | undefined;
+        (c) => c.club_id === clubId
+      );
       
       if (!selectedClub) {
         setError('Club not found');
@@ -77,7 +85,41 @@ export default function ClubDetailScreen() {
         return;
       }
 
-      setClub(selectedClub);
+      // Enrich club members with dependent IDs by matching name and relation
+      // The API returns dependents with name/relation but not ID, so we match
+      // against the full dependents list to get IDs for pass generation
+      const enrichedMembers: ClubMember[] = selectedClub.members.map((m) => {
+        if (m.type === 'self') {
+          return { type: 'self' };
+        }
+        // Find matching dependent by name and relation to get the ID
+        const dependent = deps.find(
+          (d: Dependent) => d.name === m.name && d.relation === m.relation
+        );
+        if (dependent) {
+          return {
+            type: 'dependent',
+            id: dependent.id,
+            name: m.name,
+            relation: m.relation,
+          };
+        }
+        // If no match found, we can't use this dependent for pass generation
+        // but we'll still show it in the UI with an invalid ID
+        return {
+          type: 'dependent',
+          id: -1, // Invalid ID to prevent pass generation
+          name: m.name,
+          relation: m.relation,
+        };
+      });
+
+      const enrichedClub: Club = {
+        ...selectedClub,
+        members: enrichedMembers,
+      };
+
+      setClub(enrichedClub);
 
       // Only load club data if membership allows actions
       if (membershipAllowsActions(selectedClub.status)) {
@@ -492,19 +534,26 @@ export default function ClubDetailScreen() {
 
           {/* DEPENDENTS */}
           {club.members
-            .filter((m) => m.type === 'dependent')
-            .map((m: any) => (
-              <TouchableOpacity
-                key={`${m.type}-${m.id}`}
-                disabled={alreadyPassed.includes(m.id) || !allowsActions}
-                onPress={() => {
-                  if (!allowsActions) {
-                    alert(actionDisabledMessage);
-                    return;
-                  }
-                  toggleMember(m.id);
-                }}
-              >
+            .filter((m): m is Extract<ClubMember, { type: 'dependent' }> => m.type === 'dependent')
+            .map((m) => {
+              const hasValidId = m.id > 0;
+              const isDisabled = !hasValidId || alreadyPassed.includes(m.id) || !allowsActions;
+              return (
+                <TouchableOpacity
+                  key={`${m.type}-${m.id}`}
+                  disabled={isDisabled}
+                  onPress={() => {
+                    if (!allowsActions) {
+                      alert(actionDisabledMessage);
+                      return;
+                    }
+                    if (!hasValidId) {
+                      alert('Unable to generate pass for this dependent. Please refresh the page.');
+                      return;
+                    }
+                    toggleMember(m.id);
+                  }}
+                >
                 <Text
                   style={{
                     marginTop: 8,
@@ -518,9 +567,11 @@ export default function ClubDetailScreen() {
                     : '☐'}{' '}
                   {m.name} ({m.relation})
                   {alreadyPassed.includes(m.id) && ' (Pass already generated)'}
+                  {!hasValidId && ' (Unable to generate pass)'}
                 </Text>
               </TouchableOpacity>
-            ))}
+              );
+            })}
 
           <TouchableOpacity
             onPress={confirmAttend}

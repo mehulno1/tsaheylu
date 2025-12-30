@@ -2,10 +2,8 @@ import { getSharedAuthToken } from '../../contexts/AuthContext';
 import { APIError } from './errors';
 
 const BASE_URL = __DEV__
-  // 'http://192.168.1.118:8000'
-  //? 'http://192.168.29.19:8000'
   ? 'http://192.168.1.242:8000'
-  : 'https://api.clubvision.in'; // later
+  : 'https://api.clubvision.in';
 
 // Logout callback - set by AuthContext
 let logoutCallback: (() => Promise<void>) | null = null;
@@ -119,7 +117,7 @@ async function request(
   
 export const api = {
   get: (path: string) => request(path),
-  post: (path: string, body: any) =>
+  post: (path: string, body: unknown) =>
     request(path, {
       method: 'POST',
       body: JSON.stringify(body),

@@ -1,33 +1,19 @@
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { useEffect, useState } from 'react';
 import { router } from 'expo-router';
-import { fetchMyClubs } from '../lib/api/clubs';
+import { fetchMyClubs, type ClubResponse } from '../lib/api/clubs';
 import { useAuth } from '../contexts/AuthContext';
 import { APIError } from '../lib/api/errors';
 import {
-  type MembershipStatus,
   getMembershipStatusConfig,
   membershipAllowsActions,
   getRejectionReasonMessage,
   getActionDisabledMessage,
 } from '../lib/membership';
 
-type ClubMember =
-  | { type: 'self' }
-  | { type: 'dependent'; name: string; relation: string };
-
-type Club = {
-  club_id: number;
-  club_name: string;
-  status: MembershipStatus;
-  rejection_reason?: string | null;
-  expiry_date: string | null;
-  members: ClubMember[];
-};
-
 export default function HomeScreen() {
   const { logout } = useAuth();
-  const [clubs, setClubs] = useState<Club[]>([]);
+  const [clubs, setClubs] = useState<ClubResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -123,6 +109,10 @@ export default function HomeScreen() {
     );
   }
 
+  // Determine display name for greeting
+  // Since user name is not available in existing data, use generic fallback
+  const displayName = 'Member';
+
   return (
     <View
       style={{
@@ -132,8 +122,13 @@ export default function HomeScreen() {
         paddingTop: 40,
       }}
     >
+      {/* Greeting */}
+      <Text style={{ fontSize: 20, fontWeight: '600', color: '#333' }}>
+        Hello, {displayName}
+      </Text>
+
       {/* Header */}
-      <Text style={{ fontSize: 26, fontWeight: '700' }}>
+      <Text style={{ fontSize: 26, fontWeight: '700', marginTop: 16 }}>
         Your Clubs
       </Text>
 
