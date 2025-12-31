@@ -26,7 +26,7 @@ export default function ClubEventsPage() {
     const t = localStorage.getItem('admin_token');
     if (!t) {
       alert('Admin session expired. Please login again.');
-      router.push('/login');
+      router.push('/admin/login');
       return;
     }
     setToken(t);

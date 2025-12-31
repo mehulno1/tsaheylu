@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy import text
 
-from app.auth.admin_dependencies import get_admin_user
+from app.auth.admin_dependencies import get_admin_user, get_club_admin
 from app.db.session import engine
 
 router = APIRouter(prefix="/admin")
@@ -10,7 +10,7 @@ router = APIRouter(prefix="/admin")
 @router.get("/clubs/{club_id}/pending-members")
 def get_pending_members(
     club_id: int,
-    admin_user_id: int = Depends(get_admin_user),
+    admin_user_id: int = Depends(get_club_admin),
 ):
     with engine.connect() as conn:
         result = conn.execute(

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from typing import Optional
-from app.auth.admin_dependencies import get_admin_user
+from app.auth.admin_dependencies import get_club_admin
 from app.db.event_repo import create_event
 
 router = APIRouter(prefix="/admin")
@@ -19,7 +19,7 @@ class CreateEventRequest(BaseModel):
 def create_club_event(
     club_id: int,
     payload: CreateEventRequest,
-    admin_user_id: int = Depends(get_admin_user),
+    admin_user_id: int = Depends(get_club_admin),
 ):
     create_event(
         club_id=club_id,

@@ -1,7 +1,10 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
+
+const API_BASE = 'http://127.0.0.1:8000';
 
 export default function ClubLayout({
   children,
@@ -9,7 +12,70 @@ export default function ClubLayout({
   children: React.ReactNode;
 }) {
   const params = useParams();
+  const router = useRouter();
   const clubId = params.clubId as string;
+  const [authorized, setAuthorized] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    async function verifyAccess() {
+      const token = localStorage.getItem('admin_token');
+      if (!token) {
+        router.push('/admin/login');
+        return;
+      }
+
+      // Check if club is in authorized list
+      const storedClubIds = localStorage.getItem('admin_club_ids');
+      if (storedClubIds) {
+        const clubIds: number[] = JSON.parse(storedClubIds);
+        if (clubIds.includes(Number(clubId))) {
+          setAuthorized(true);
+          return;
+        }
+      }
+
+      // If not in stored list, verify with backend
+      try {
+        const res = await fetch(`${API_BASE}/admin/clubs/${clubId}/members`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (res.status === 403) {
+          alert('You do not have admin access to this club.');
+          router.push('/admin');
+          setAuthorized(false);
+          return;
+        }
+
+        if (!res.ok) {
+          throw new Error('Failed to verify access');
+        }
+
+        setAuthorized(true);
+      } catch (err) {
+        console.error(err);
+        alert('Failed to verify club access');
+        router.push('/admin');
+        setAuthorized(false);
+      }
+    }
+
+    verifyAccess();
+  }, [clubId, router]);
+
+  if (authorized === null) {
+    return (
+      <div style={{ padding: 24 }}>
+        <p>Verifying access...</p>
+      </div>
+    );
+  }
+
+  if (!authorized) {
+    return null;
+  }
 
   return (
     <div style={{ display: 'flex', gap: 24 }}>

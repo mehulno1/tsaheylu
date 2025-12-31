@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from app.core.auth import get_current_user_id
-from app.auth.admin_dependencies import get_admin_user
+from app.auth.admin_dependencies import get_admin_user, get_club_admin
 from app.db.event_pass_repo import get_passes_for_user
 from app.db.event_pass_repo import create_event_pass
 from app.db.event_pass_repo import get_passes_for_user_event
@@ -52,7 +52,7 @@ def generate_event_pass(
 @router.get("/admin/clubs/{club_id}/passes")
 def get_club_passes(
     club_id: int,
-    admin_user_id: int = Depends(get_admin_user),
+    admin_user_id: int = Depends(get_club_admin),
 ):
     """
     Admin endpoint to get all event passes for a club.

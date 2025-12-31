@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import text
 
 from app.core.auth import get_current_user_id
-from app.auth.admin_dependencies import get_admin_user
+from app.auth.admin_dependencies import get_admin_user, get_club_admin
 from app.db.session import engine
 from app.db.announcement_repo import get_announcements_for_club
 
@@ -27,7 +27,7 @@ def club_announcements(
 def create_announcement(
     club_id: int,
     payload: dict,
-    admin_user_id: int = Depends(get_admin_user),
+    admin_user_id: int = Depends(get_club_admin),
 ):
     with engine.begin() as conn:
         conn.execute(

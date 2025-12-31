@@ -19,6 +19,27 @@ def get_all_clubs():
         return [dict(row._mapping) for row in result]
 
 
+def get_admin_clubs(user_id: int) -> list[dict]:
+    """
+    Get clubs where the user has admin or superadmin role.
+    """
+    with engine.connect() as conn:
+        result = conn.execute(
+            text("""
+                SELECT DISTINCT
+                    c.id AS club_id,
+                    c.name AS club_name
+                FROM clubs c
+                JOIN memberships m ON m.club_id = c.id
+                WHERE m.user_id = :user_id
+                  AND m.role IN ('admin', 'superadmin')
+                ORDER BY c.name
+            """),
+            {"user_id": user_id},
+        )
+        return [dict(row._mapping) for row in result]
+
+
 def get_clubs_for_user(user_id: int):
     with engine.connect() as conn:
         result = conn.execute(
