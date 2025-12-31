@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from app.core.auth import get_current_user_id
+from app.auth.admin_dependencies import get_admin_user
 from app.db.event_pass_repo import get_passes_for_user
 from app.db.event_pass_repo import create_event_pass
 from app.db.event_pass_repo import get_passes_for_user_event
+from app.db.event_pass_repo import get_passes_for_club
 from app.db.membership_repo import is_user_member_of_event_club
 router = APIRouter()
 
@@ -45,3 +47,14 @@ def generate_event_pass(
         return create_event_pass(event_id, user_id, dependent_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/admin/clubs/{club_id}/passes")
+def get_club_passes(
+    club_id: int,
+    admin_user_id: int = Depends(get_admin_user),
+):
+    """
+    Admin endpoint to get all event passes for a club.
+    """
+    return get_passes_for_club(club_id)
