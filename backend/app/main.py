@@ -12,6 +12,7 @@ from app.routers import events
 from app.routers import event_passes
 from app.routers import admin_club_members
 from app.routers import admin_clubs
+from app.routers import admin_bulk_upload
 
 
 
@@ -45,3 +46,4 @@ app.include_router(events.router)
 app.include_router(event_passes.router)
 app.include_router(admin_club_members.router)
 app.include_router(admin_clubs.router)
+app.include_router(admin_bulk_upload.router)

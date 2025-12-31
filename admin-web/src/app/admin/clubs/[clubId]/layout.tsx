@@ -95,6 +95,7 @@ export default function ClubLayout({
           <Link href={`/admin/clubs/${clubId}`}>Overview</Link>
           <Link href={`/admin/clubs/${clubId}/members`}>Members</Link>
           <Link href={`/admin/clubs/${clubId}/pending-members`}>Pending Members</Link>
+          <Link href={`/admin/clubs/${clubId}/bulk-upload`}>Bulk Upload Members</Link>
           <Link href={`/admin/clubs/${clubId}/announcements`}>Announcements</Link>
           <Link href={`/admin/clubs/${clubId}/events`}>Events</Link>
           <Link href={`/admin/clubs/${clubId}/passes`}>Passes</Link>
