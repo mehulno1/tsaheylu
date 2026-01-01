@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-
-const API_BASE = 'http://127.0.0.1:8000';
+import { API_BASE } from '@/lib/apiConfig';
 
 export default function ClubLayout({
   children,

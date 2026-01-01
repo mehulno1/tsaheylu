@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { API_BASE } from '@/lib/apiConfig';
 
 type Event = {
   id: number;
@@ -39,7 +40,7 @@ export default function ClubEventsPage() {
     async function loadEvents() {
       try {
         const res = await fetch(
-          `http://127.0.0.1:8000/clubs/${clubId}/events`,
+          `${API_BASE}/clubs/${clubId}/events`,
           {
             headers: {
               Authorization: `Bearer ${token}`,

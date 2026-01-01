@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { API_BASE } from '@/lib/apiConfig';
 
 export default function CreateEventPage() {
   const params = useParams();
@@ -32,7 +33,7 @@ export default function CreateEventPage() {
 
       try {
         const res = await fetch(
-          `http://127.0.0.1:8000/admin/clubs/${clubId}/events`,
+          `${API_BASE}/admin/clubs/${clubId}/events`,
           {
             method: 'POST',
             headers: {
@@ -79,7 +80,7 @@ export default function CreateEventPage() {
 
     try {
       const res = await fetch(
-        `http://127.0.0.1:8000/admin/clubs/${clubId}/events`,
+        `${API_BASE}/admin/clubs/${clubId}/events`,
         {
           method: 'POST',
           headers: {

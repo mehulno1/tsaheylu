@@ -8,6 +8,7 @@ import {
   rejectMember,
   PendingMember,
 } from '@/lib/api/adminMembers';
+import { API_BASE } from '@/lib/apiConfig';
 
 type ActionType = 'approve' | 'reject' | null;
 type ActionState = {
@@ -44,7 +45,7 @@ export default function MembersPage() {
       setError(null);
       const token = localStorage.getItem('admin_token');
       const res = await fetch(
-        `http://127.0.0.1:8000/admin/clubs/${clubId}/pending-members`,
+        `${API_BASE}/admin/clubs/${clubId}/pending-members`,
         {
           headers: {
             Authorization: `Bearer ${token}`,

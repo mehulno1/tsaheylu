@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-
-const API_BASE = 'http://127.0.0.1:8000';
+import { API_BASE } from '@/lib/apiConfig';
 
 type Club = {
   club_id: number;

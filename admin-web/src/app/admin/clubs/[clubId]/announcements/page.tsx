@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-
-const API_BASE = 'http://127.0.0.1:8000';
+import { API_BASE } from '@/lib/apiConfig';
 
 type Announcement = {
   id: number;
