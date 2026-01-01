@@ -15,6 +15,7 @@ export default function ClubLayout({
   const router = useRouter();
   const clubId = params.clubId as string;
   const [authorized, setAuthorized] = useState<boolean | null>(null);
+  const [clubName, setClubName] = useState<string | null>(null);
 
   useEffect(() => {
     async function verifyAccess() {
@@ -24,12 +25,52 @@ export default function ClubLayout({
         return;
       }
 
+      // Fetch club name from my-clubs or use cached data
+      async function fetchClubName() {
+        // Try to get from localStorage first (stored when admin logs in)
+        const storedClubs = localStorage.getItem('admin_clubs_data');
+        if (storedClubs) {
+          try {
+            const clubs: Array<{ club_id: number; club_name: string }> = JSON.parse(storedClubs);
+            const club = clubs.find((c) => c.club_id === Number(clubId));
+            if (club) {
+              setClubName(club.club_name);
+              return;
+            }
+          } catch (err) {
+            // If parsing fails, fetch from API
+          }
+        }
+
+        // Fallback: fetch from API
+        try {
+          const res = await fetch(`${API_BASE}/admin/my-clubs`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+
+          if (res.ok) {
+            const clubs: Array<{ club_id: number; club_name: string }> = await res.json();
+            // Store in localStorage for future use
+            localStorage.setItem('admin_clubs_data', JSON.stringify(clubs));
+            const club = clubs.find((c) => c.club_id === Number(clubId));
+            if (club) {
+              setClubName(club.club_name);
+            }
+          }
+        } catch (err) {
+          console.error('Failed to fetch club name:', err);
+        }
+      }
+
       // Check if club is in authorized list
       const storedClubIds = localStorage.getItem('admin_club_ids');
       if (storedClubIds) {
         const clubIds: number[] = JSON.parse(storedClubIds);
         if (clubIds.includes(Number(clubId))) {
           setAuthorized(true);
+          fetchClubName();
           return;
         }
       }
@@ -54,6 +95,7 @@ export default function ClubLayout({
         }
 
         setAuthorized(true);
+        fetchClubName();
       } catch (err) {
         console.error(err);
         alert('Failed to verify club access');
@@ -89,7 +131,21 @@ export default function ClubLayout({
           padding: 16,
         }}
       >
-        <h3 style={{ marginBottom: 16 }}>Club Admin</h3>
+        <h3 style={{ marginBottom: 8, fontSize: 16, fontWeight: 600 }}>Club Admin</h3>
+        {clubName && (
+          <div
+            style={{
+              marginBottom: 16,
+              padding: 12,
+              background: '#f5f5f5',
+              borderRadius: 6,
+              border: '1px solid #e0e0e0',
+            }}
+          >
+            <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>Active Club</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#000' }}>{clubName}</div>
+          </div>
+        )}
 
         <nav style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <Link href={`/admin/clubs/${clubId}`}>Overview</Link>

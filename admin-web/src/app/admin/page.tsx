@@ -47,6 +47,9 @@ export default function AdminHomePage() {
         // Store authorized club IDs for route protection
         const clubIds = data.map((c: Club) => c.club_id);
         localStorage.setItem('admin_club_ids', JSON.stringify(clubIds));
+        
+        // Store club data (including names) for easy access
+        localStorage.setItem('admin_clubs_data', JSON.stringify(data));
       } catch (err) {
         console.error(err);
         alert('Failed to load clubs');
