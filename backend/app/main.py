@@ -13,7 +13,11 @@ from app.routers import event_passes
 from app.routers import admin_club_members
 from app.routers import admin_clubs
 from app.routers import admin_bulk_upload
-
+from dotenv import load_dotenv
+import os
+load_dotenv()
+print(os.getenv("TEST_OTP_MODE"))
+print(os.getenv("TEST_OTP_CODE"))
 
 
 app = FastAPI(title="Club Vision API")

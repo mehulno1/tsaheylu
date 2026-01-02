@@ -1,10 +1,11 @@
 import { getSharedAuthToken, getLogoutCallback } from '../auth/tokenStorage';
 import { APIError } from './errors';
 
-const BASE_URL = __DEV__
-  //? 'http://192.168.1.242:8000'
-  ? 'http://192.168.1.118:8000'
-  : 'https://api.clubvision.in';
+const BASE_URL =
+  process.env.EXPO_PUBLIC_API_BASE_URL ??
+  (__DEV__
+    ? 'http://192.168.1.118:8000'
+    : 'https://api.clubvision.in');
   
 // Legacy functions kept for backward compatibility but deprecated
 // Token management is now handled by AuthContext
